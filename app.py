@@ -67,6 +67,8 @@ if uploaded_file:
                     df_nomina["Puntaje"] = pd.to_numeric(df_nomina["Puntaje"], errors="coerce")
 
                 df_nomina["Rendimiento"] = df_nomina["Puntaje"].apply(lambda x: clasificar_rendimiento(x, analisis_tipo))
+                promedio_curso = df_nomina["Puntaje"].mean()
+                df_nomina["Promedio Curso"] = promedio_curso
                 resultados[sheet] = df_nomina
 
                 conteo = df_nomina["Rendimiento"].value_counts().reindex(["Insuficiente", "Intermedio", "Adecuado"], fill_value=0)
@@ -101,7 +103,7 @@ if uploaded_file:
                 for i, (sheet, fig) in enumerate(graficos.items()):
                     with cols[i % 3]:
                         st.pyplot(fig)
-                        st.caption(f"{sheet}")
+                        st.caption(f"{sheet} — Promedio: {resultados[sheet]['Promedio Curso'].iloc[0]:.2f}")
 
             if st.button("🖨️ Exportar gráficos a PDF"):
                 pdf = FPDF()
@@ -117,7 +119,26 @@ if uploaded_file:
                         pdf.cell(0, 10, f"Rendimiento - {sheet}", ln=True)
                         pdf.image(img_path, x=10, y=30, w=180)
 
-                    pdf_buffer = BytesIO()
+                    
+                    # Agregar gráfico general del liceo al PDF
+                    all_data = pd.concat(resultados.values())
+                    promedio_general = all_data["Puntaje"].mean()
+                    conteo_general = all_data["Rendimiento"].value_counts().reindex(["Insuficiente", "Intermedio", "Adecuado"], fill_value=0)
+                    fig_all, ax = plt.subplots(figsize=(6, 4))
+                    conteo_general.plot(kind="bar", ax=ax)
+                    ax.set_title(f"Rendimiento General del Liceo (Promedio: {promedio_general:.2f})")
+                    ax.set_ylabel("Cantidad de estudiantes")
+                    ax.set_xlabel("Rendimiento")
+                    ax.grid(axis="y")
+                    grafico_general_path = os.path.join(tempdir, "liceo_general.png")
+                    fig_all.savefig(grafico_general_path, format="png", bbox_inches="tight")
+
+                    pdf.add_page()
+                    pdf.set_font("Arial", "B", 16)
+                    pdf.cell(0, 10, f"Rendimiento General del Liceo", ln=True)
+                    pdf.image(grafico_general_path, x=10, y=30, w=180)
+
+pdf_buffer = BytesIO()
                     pdf_output_bytes = pdf.output(dest='S').encode('latin-1')
                     pdf_buffer.write(pdf_output_bytes)
                     pdf_buffer.seek(0)
@@ -128,7 +149,22 @@ if uploaded_file:
                         file_name="graficos_rendimiento.pdf",
                         mime="application/pdf"
                     )
-        else:
+        
+        # Gráfico general con todos los cursos
+        st.subheader("📈 Rendimiento general del liceo")
+
+        all_data = pd.concat(resultados.values())
+        promedio_general = all_data["Puntaje"].mean()
+        conteo_general = all_data["Rendimiento"].value_counts().reindex(["Insuficiente", "Intermedio", "Adecuado"], fill_value=0)
+
+        fig_all, ax = plt.subplots(figsize=(6, 4))
+        conteo_general.plot(kind="bar", ax=ax)
+        ax.set_title(f"Rendimiento General del Liceo (Promedio: {promedio_general:.2f})")
+        ax.set_ylabel("Cantidad de estudiantes")
+        ax.set_xlabel("Rendimiento")
+        ax.grid(axis="y")
+        st.pyplot(fig_all)
+else:
             st.error("No se pudo procesar ninguna hoja.")
     except Exception as e:
         st.error(f"❌ Error al procesar el archivo: {e}")
