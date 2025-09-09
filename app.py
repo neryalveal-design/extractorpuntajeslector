@@ -1,3 +1,5 @@
+tab1, tab2, tab3, tab4 = st.tabs(["Resumen", "Gráficos", "Exportación", "Descendidos"])
+
 import streamlit as st
 import pandas as pd
 from io import BytesIO
