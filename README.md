@@ -1,3 +1,3 @@
-# SIMCE / PAES App - Análisis y Gráficos
+# SIMCE / PAES App - Versión Final
 
-Incluye exportación a PDF y visualización múltiple de gráficos.
+Incluye exportación a PDF con gráfico general del liceo.

@@ -16,7 +16,7 @@ Esta aplicación te permite:
 - Reutilizar nóminas ya procesadas.
 - Clasificar automáticamente los rendimientos según criterios **SIMCE** o **PAES**.
 - Visualizar gráficos de barras por curso.
-- Exportar los gráficos a PDF.
+- Exportar los gráficos a PDF (incluyendo gráfico general).
 """)
 
 analisis_tipo = st.selectbox("Selecciona el tipo de análisis:", ["SIMCE", "PAES"])
@@ -105,66 +105,56 @@ if uploaded_file:
                         st.pyplot(fig)
                         st.caption(f"{sheet} — Promedio: {resultados[sheet]['Promedio Curso'].iloc[0]:.2f}")
 
+            # Mostrar gráfico general del liceo
+            all_data = pd.concat(resultados.values())
+            promedio_general = all_data["Puntaje"].mean()
+            conteo_general = all_data["Rendimiento"].value_counts().reindex(["Insuficiente", "Intermedio", "Adecuado"], fill_value=0)
+
+            st.subheader("📈 Rendimiento general del liceo")
+            fig_all, ax = plt.subplots(figsize=(6, 4))
+            conteo_general.plot(kind="bar", ax=ax)
+            ax.set_title(f"Rendimiento General del Liceo (Promedio: {promedio_general:.2f})")
+            ax.set_ylabel("Cantidad")
+            ax.set_xlabel("Rendimiento")
+            ax.grid(axis="y")
+            st.pyplot(fig_all)
+
             if st.button("🖨️ Exportar gráficos a PDF"):
-                pdf = FPDF()
-                pdf.set_auto_page_break(auto=True, margin=15)
+                try:
+                    pdf = FPDF()
+                    pdf.set_auto_page_break(auto=True, margin=15)
 
-                with tempfile.TemporaryDirectory() as tempdir:
-                    for sheet, fig in graficos.items():
-                        img_path = os.path.join(tempdir, f"{sheet}.png")
-                        fig.savefig(img_path, format='png', bbox_inches='tight')
+                    with tempfile.TemporaryDirectory() as tempdir:
+                        for sheet, fig in graficos.items():
+                            img_path = os.path.join(tempdir, f"{sheet}.png")
+                            fig.savefig(img_path, format='png', bbox_inches='tight')
+                            pdf.add_page()
+                            pdf.set_font("Arial", "B", 16)
+                            pdf.cell(0, 10, f"Rendimiento - {sheet}", ln=True)
+                            pdf.image(img_path, x=10, y=30, w=180)
 
+                        # Guardar gráfico general
+                        grafico_general_path = os.path.join(tempdir, "liceo_general.png")
+                        fig_all.savefig(grafico_general_path, format="png", bbox_inches="tight")
                         pdf.add_page()
                         pdf.set_font("Arial", "B", 16)
-                        pdf.cell(0, 10, f"Rendimiento - {sheet}", ln=True)
-                        pdf.image(img_path, x=10, y=30, w=180)
+                        pdf.cell(0, 10, f"Rendimiento General del Liceo", ln=True)
+                        pdf.image(grafico_general_path, x=10, y=30, w=180)
 
-                    
-                    # Agregar gráfico general del liceo al PDF
-                    all_data = pd.concat(resultados.values())
-                    promedio_general = all_data["Puntaje"].mean()
-                    conteo_general = all_data["Rendimiento"].value_counts().reindex(["Insuficiente", "Intermedio", "Adecuado"], fill_value=0)
-                    fig_all, ax = plt.subplots(figsize=(6, 4))
-                    conteo_general.plot(kind="bar", ax=ax)
-                    ax.set_title(f"Rendimiento General del Liceo (Promedio: {promedio_general:.2f})")
-                    ax.set_ylabel("Cantidad de estudiantes")
-                    ax.set_xlabel("Rendimiento")
-                    ax.grid(axis="y")
-                    grafico_general_path = os.path.join(tempdir, "liceo_general.png")
-                    fig_all.savefig(grafico_general_path, format="png", bbox_inches="tight")
+                        pdf_buffer = BytesIO()
+                        pdf_output_bytes = pdf.output(dest='S').encode('latin-1')
+                        pdf_buffer.write(pdf_output_bytes)
+                        pdf_buffer.seek(0)
 
-                    pdf.add_page()
-                    pdf.set_font("Arial", "B", 16)
-                    pdf.cell(0, 10, f"Rendimiento General del Liceo", ln=True)
-                    pdf.image(grafico_general_path, x=10, y=30, w=180)
-
-pdf_buffer = BytesIO()
-                    pdf_output_bytes = pdf.output(dest='S').encode('latin-1')
-                    pdf_buffer.write(pdf_output_bytes)
-                    pdf_buffer.seek(0)
-
-                    st.download_button(
-                        label="📄 Descargar PDF de gráficos",
-                        data=pdf_buffer,
-                        file_name="graficos_rendimiento.pdf",
-                        mime="application/pdf"
-                    )
-        
-        # Gráfico general con todos los cursos
-        st.subheader("📈 Rendimiento general del liceo")
-
-        all_data = pd.concat(resultados.values())
-        promedio_general = all_data["Puntaje"].mean()
-        conteo_general = all_data["Rendimiento"].value_counts().reindex(["Insuficiente", "Intermedio", "Adecuado"], fill_value=0)
-
-        fig_all, ax = plt.subplots(figsize=(6, 4))
-        conteo_general.plot(kind="bar", ax=ax)
-        ax.set_title(f"Rendimiento General del Liceo (Promedio: {promedio_general:.2f})")
-        ax.set_ylabel("Cantidad de estudiantes")
-        ax.set_xlabel("Rendimiento")
-        ax.grid(axis="y")
-        st.pyplot(fig_all)
-else:
+                        st.download_button(
+                            label="📄 Descargar PDF de gráficos",
+                            data=pdf_buffer,
+                            file_name="graficos_rendimiento.pdf",
+                            mime="application/pdf"
+                        )
+                except Exception as e:
+                    st.error(f"Error al exportar PDF: {e}")
+        else:
             st.error("No se pudo procesar ninguna hoja.")
     except Exception as e:
         st.error(f"❌ Error al procesar el archivo: {e}")
