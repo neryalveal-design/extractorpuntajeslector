@@ -1,3 +1,3 @@
-# SIMCE / PAES Visualizador
+# SIMCE / PAES App - Análisis y Gráficos
 
-Esta app ahora incluye gráficos por curso y exportación a PDF.
+Incluye exportación a PDF y visualización múltiple de gráficos.

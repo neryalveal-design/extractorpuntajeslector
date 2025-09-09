@@ -3,6 +3,8 @@ import pandas as pd
 from io import BytesIO
 import matplotlib.pyplot as plt
 from fpdf import FPDF
+import tempfile
+import os
 
 st.set_page_config(page_title="Extractor y Analizador SIMCE / PAES", layout="centered")
 
@@ -17,7 +19,6 @@ Esta aplicación te permite:
 - Exportar los gráficos a PDF.
 """)
 
-# Selección del tipo de análisis
 analisis_tipo = st.selectbox("Selecciona el tipo de análisis:", ["SIMCE", "PAES"])
 
 def clasificar_rendimiento(puntaje, tipo):
@@ -68,13 +69,12 @@ if uploaded_file:
                 df_nomina["Rendimiento"] = df_nomina["Puntaje"].apply(lambda x: clasificar_rendimiento(x, analisis_tipo))
                 resultados[sheet] = df_nomina
 
-                # Crear gráfico de barras
                 conteo = df_nomina["Rendimiento"].value_counts().reindex(["Insuficiente", "Intermedio", "Adecuado"], fill_value=0)
-                fig, ax = plt.subplots()
+                fig, ax = plt.subplots(figsize=(4, 3))
                 conteo.plot(kind="bar", ax=ax)
-                ax.set_title(f"Rendimiento - {sheet}")
-                ax.set_ylabel("Número de estudiantes")
-                ax.set_xlabel("Categoría")
+                ax.set_title(f"{sheet}")
+                ax.set_ylabel("Cantidad")
+                ax.set_xlabel("Rendimiento")
                 ax.grid(axis='y')
                 graficos[sheet] = fig
 
@@ -97,36 +97,37 @@ if uploaded_file:
             )
 
             if st.button("📊 Mostrar gráficos por curso"):
-                for sheet, fig in graficos.items():
-                    st.pyplot(fig)
+                cols = st.columns(4)
+                for i, (sheet, fig) in enumerate(graficos.items()):
+                    with cols[i % 4]:
+                        st.pyplot(fig)
+                        st.caption(f"{sheet}")
 
             if st.button("🖨️ Exportar gráficos a PDF"):
-                pdf_buffer = BytesIO()
                 pdf = FPDF()
                 pdf.set_auto_page_break(auto=True, margin=15)
 
-                for sheet, fig in graficos.items():
-                    temp_img = BytesIO()
-                    fig.savefig(temp_img, format='png', bbox_inches='tight')
-                    temp_img.seek(0)
+                with tempfile.TemporaryDirectory() as tempdir:
+                    for sheet, fig in graficos.items():
+                        img_path = os.path.join(tempdir, f"{sheet}.png")
+                        fig.savefig(img_path, format='png', bbox_inches='tight')
 
-                    pdf.add_page()
-                    pdf.set_font("Arial", "B", 16)
-                    pdf.cell(0, 10, f"Rendimiento - {sheet}", ln=True)
-                    pdf.image(temp_img, x=10, y=30, w=180)
+                        pdf.add_page()
+                        pdf.set_font("Arial", "B", 16)
+                        pdf.cell(0, 10, f"Rendimiento - {sheet}", ln=True)
+                        pdf.image(img_path, x=10, y=30, w=180)
 
-                pdf.output(pdf_buffer)
-                pdf_buffer.seek(0)
+                    pdf_buffer = BytesIO()
+                    pdf.output(pdf_buffer)
+                    pdf_buffer.seek(0)
 
-                st.download_button(
-                    label="📄 Descargar PDF de gráficos",
-                    data=pdf_buffer,
-                    file_name="graficos_rendimiento.pdf",
-                    mime="application/pdf"
-                )
-
+                    st.download_button(
+                        label="📄 Descargar PDF de gráficos",
+                        data=pdf_buffer,
+                        file_name="graficos_rendimiento.pdf",
+                        mime="application/pdf"
+                    )
         else:
             st.error("No se pudo procesar ninguna hoja.")
-
     except Exception as e:
         st.error(f"❌ Error al procesar el archivo: {e}")
