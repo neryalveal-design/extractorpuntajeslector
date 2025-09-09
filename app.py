@@ -1,16 +1,42 @@
-from fpdf import FPDF
-from io import BytesIO
-import io
-import matplotlib.pyplot as plt
-import os
-import pandas as pd
 import streamlit as st
+import pandas as pd
+from io import BytesIO
+import matplotlib.pyplot as plt
+from fpdf import FPDF
 import tempfile
+import os
+
+def obtener_descendidos_con_nombres(data_por_curso, top_n=15):
+    """
+    Devuelve un diccionario con los N estudiantes de puntaje más bajo por curso.
+    Cada entrada contiene nombre y puntaje.
+    """
+    descendidos_por_curso = {}
+    for curso, df in data_por_curso.items():
+        if 'Alumno' in df.columns and 'Puntaje' in df.columns:
+            df_filtrado = df[['Alumno', 'Puntaje']].dropna()
+            df_filtrado = df_filtrado.sort_values(by='Puntaje', ascending=True).head(top_n)
+            descendidos_por_curso[curso] = df_filtrado
+    return descendidos_por_curso
+
+
+def exportar_descendidos_con_nombres(descendidos_por_curso):
+    """
+    Exporta a Excel los 15 alumnos con puntajes más bajos por curso,
+    en hojas separadas.
+    """
+    import io
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        for curso, df in descendidos_por_curso.items():
+            df[['Alumno', 'Puntaje']].to_excel(writer, sheet_name=str(curso), index=False)
+    output.seek(0)
+    return output.getvalue()
+
 
 st.set_page_config(page_title="Extractor y Analizador SIMCE / PAES", layout="centered")
 
 st.title("📊 Extractor, Analizador y Visualizador de Puntajes SIMCE / PAES")
-tab1, tab2, tab3, tab4 = st.tabs(["Resumen", "Gráficos", "Exportación", "Descendidos"])
 
 st.write("""
 Esta aplicación te permite:
@@ -160,48 +186,3 @@ if uploaded_file:
             st.error("No se pudo procesar ninguna hoja.")
     except Exception as e:
         st.error(f"❌ Error al procesar el archivo: {e}")
-
-def obtener_descendidos_con_nombres(data_por_curso, top_n=15):
-    """
-    Devuelve un diccionario con los N estudiantes de puntaje más bajo por curso.
-    Cada entrada contiene nombre y puntaje.
-    """
-    descendidos_por_curso = {}
-    for curso, df in data_por_curso.items():
-        if 'Alumno' in df.columns and 'Puntaje' in df.columns:
-            df_filtrado = df[['Alumno', 'Puntaje']].dropna()
-            df_filtrado = df_filtrado.sort_values(by='Puntaje', ascending=True).head(top_n)
-            descendidos_por_curso[curso] = df_filtrado
-    return descendidos_por_curso
-
-
-def exportar_descendidos_con_nombres(descendidos_por_curso):
-    """
-    Exporta a Excel los 15 alumnos con puntajes más bajos por curso,
-    en hojas separadas.
-    """
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        for curso, df in descendidos_por_curso.items():
-            df[['Alumno', 'Puntaje']].to_excel(writer, sheet_name=str(curso), index=False)
-    output.seek(0)
-    return output.getvalue()
-
-with tab4:
-    st.header("📉 Alumnos Descendidos (Puntajes más bajos por curso)")
-
-    descendidos_por_curso = obtener_descendidos_con_nombres(data_por_curso, top_n=15)
-
-    # Mostrar tablas por curso
-    for curso, df in descendidos_por_curso.items():
-        st.subheader(f"{curso}: 15 puntajes más bajos")
-        st.table(df[['Alumno', 'Puntaje']])
-
-    # Botón para descargar en Excel
-    excel_data = exportar_descendidos_con_nombres(descendidos_por_curso)
-    st.download_button(
-        label="📥 Descargar descendidos por curso en Excel",
-        data=excel_data,
-        file_name="descendidos_por_curso.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
