@@ -1,0 +1,23 @@
+# Entornos virtuales
+venv/
+.env/
+.envrc
+
+# Archivos de Python cache
+__pycache__/
+*.py[cod]
+
+# Archivos temporales o de sistema
+*.log
+*.db
+*.sqlite3
+.DS_Store
+Thumbs.db
+
+# Archivos de configuración de editores
+.vscode/
+.idea/
+
+# Archivos de exportación o datos generados
+*.xlsx
+*.zip
