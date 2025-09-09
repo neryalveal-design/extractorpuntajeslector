@@ -182,23 +182,23 @@ def exportar_excel(df):
         df.to_excel(writer, index=False, sheet_name='Descendidos')
     return output.getvalue()
 
-# Visualización directa sin pestañas
-st.header("📉 Alumnos Descendidos (Puntajes más bajos)")
+with tab4:
+    st.header("📉 Alumnos Descendidos (Puntajes más bajos)")
 
-        descendidos_por_curso = obtener_alumnos_descendidos_por_curso(data_por_curso, top_n=15)
-        tabla_general = obtener_tabla_general_descendidos(descendidos_por_curso)
+    descendidos_por_curso = obtener_alumnos_descendidos_por_curso(data_por_curso, top_n=15)
+    tabla_general = obtener_tabla_general_descendidos(descendidos_por_curso)
 
-        st.subheader("Tabla General de Descendidos")
-        st.dataframe(tabla_general)
+    st.subheader("Tabla General de Descendidos")
+    st.dataframe(tabla_general)
 
-        excel_data = exportar_excel(tabla_general)
-        st.download_button(
-            label="📥 Descargar tabla general en Excel",
-            data=excel_data,
-            file_name='alumnos_descendidos.xlsx',
-            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
+    excel_data = exportar_excel(tabla_general)
+    st.download_button(
+        label="📥 Descargar tabla general en Excel",
+        data=excel_data,
+        file_name='alumnos_descendidos.xlsx',
+        mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
 
-        for curso, df in descendidos_por_curso.items():
-            st.subheader(f"{curso}: 15 puntajes más bajos")
-            st.dataframe(df)
+    for curso, df in descendidos_por_curso.items():
+        st.subheader(f"{curso}: 15 puntajes más bajos")
+        st.dataframe(df)
