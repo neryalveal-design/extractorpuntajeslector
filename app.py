@@ -97,9 +97,9 @@ if uploaded_file:
             )
 
             if st.button("📊 Mostrar gráficos por curso"):
-                cols = st.columns(4)
+                cols = st.columns(3)
                 for i, (sheet, fig) in enumerate(graficos.items()):
-                    with cols[i % 4]:
+                    with cols[i % 3]:
                         st.pyplot(fig)
                         st.caption(f"{sheet}")
 
