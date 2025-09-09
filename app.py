@@ -118,7 +118,8 @@ if uploaded_file:
                         pdf.image(img_path, x=10, y=30, w=180)
 
                     pdf_buffer = BytesIO()
-                    pdf.output(pdf_buffer)
+                    pdf_output_bytes = pdf.output(dest='S').encode('latin-1')
+                    pdf_buffer.write(pdf_output_bytes)
                     pdf_buffer.seek(0)
 
                     st.download_button(
