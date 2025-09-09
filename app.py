@@ -158,3 +158,47 @@ if uploaded_file:
             st.error("No se pudo procesar ninguna hoja.")
     except Exception as e:
         st.error(f"❌ Error al procesar el archivo: {e}")
+
+def obtener_alumnos_descendidos_por_curso(data_por_curso, top_n=15):
+    descendidos_por_curso = {}
+    for curso, df in data_por_curso.items():
+        df_filtrado = df[['Alumno', 'Puntaje']].dropna()
+        df_filtrado = df_filtrado.sort_values(by='Puntaje', ascending=True).head(top_n)
+        descendidos_por_curso[curso] = df_filtrado
+    return descendidos_por_curso
+
+def obtener_tabla_general_descendidos(descendidos_por_curso):
+    tabla_general = []
+    for curso, df in descendidos_por_curso.items():
+        temp = df.copy()
+        temp['Curso'] = curso
+        tabla_general.append(temp)
+    return pd.concat(tabla_general, ignore_index=True)
+
+import io
+def exportar_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Descendidos')
+    return output.getvalue()
+
+# Visualización directa sin pestañas
+st.header("📉 Alumnos Descendidos (Puntajes más bajos)")
+
+        descendidos_por_curso = obtener_alumnos_descendidos_por_curso(data_por_curso, top_n=15)
+        tabla_general = obtener_tabla_general_descendidos(descendidos_por_curso)
+
+        st.subheader("Tabla General de Descendidos")
+        st.dataframe(tabla_general)
+
+        excel_data = exportar_excel(tabla_general)
+        st.download_button(
+            label="📥 Descargar tabla general en Excel",
+            data=excel_data,
+            file_name='alumnos_descendidos.xlsx',
+            mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+
+        for curso, df in descendidos_por_curso.items():
+            st.subheader(f"{curso}: 15 puntajes más bajos")
+            st.dataframe(df)
