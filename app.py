@@ -1,16 +1,16 @@
-tab1, tab2, tab3, tab4 = st.tabs(["Resumen", "Gráficos", "Exportación", "Descendidos"])
-
-import streamlit as st
-import pandas as pd
-from io import BytesIO
-import matplotlib.pyplot as plt
 from fpdf import FPDF
-import tempfile
+from io import BytesIO
+import io
+import matplotlib.pyplot as plt
 import os
+import pandas as pd
+import streamlit as st
+import tempfile
 
 st.set_page_config(page_title="Extractor y Analizador SIMCE / PAES", layout="centered")
 
 st.title("📊 Extractor, Analizador y Visualizador de Puntajes SIMCE / PAES")
+tab1, tab2, tab3, tab4 = st.tabs(["Resumen", "Gráficos", "Exportación", "Descendidos"])
 
 st.write("""
 Esta aplicación te permite:
@@ -179,7 +179,6 @@ def exportar_descendidos_con_nombres(descendidos_por_curso):
     Exporta a Excel los 15 alumnos con puntajes más bajos por curso,
     en hojas separadas.
     """
-    import io
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         for curso, df in descendidos_por_curso.items():
