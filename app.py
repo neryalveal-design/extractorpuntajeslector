@@ -9,17 +9,35 @@ import os
 def obtener_descendidos_con_nombres(data_por_curso, top_n=15):
     """
     Devuelve un diccionario con los N estudiantes de puntaje más bajo por curso.
-    Usa la columna 'Puntaje' como referencia.
+    Detecta dinámicamente la columna de nombres y puntajes.
     """
+    posibles_nombres = ["Alumno", "NOMBRE ESTUDIANTE", "Nombre", "nombre estudiante"]
+    posibles_puntajes = ["Puntaje", "Puntaje Simce", "puntaje", "puntajes"]
+
     descendidos_por_curso = {}
+
     for curso, df in data_por_curso.items():
-        if 'Alumno' in df.columns and 'Puntaje' in df.columns:
-            df_filtrado = df[['Alumno', 'Puntaje']].dropna(subset=['Puntaje'])
-            df_filtrado['Puntaje'] = pd.to_numeric(df_filtrado['Puntaje'], errors='coerce')
-            df_filtrado = df_filtrado.dropna(subset=['Puntaje'])
-            df_filtrado = df_filtrado.sort_values(by='Puntaje', ascending=True).head(top_n)
-            df_filtrado['Curso'] = curso
-            descendidos_por_curso[curso] = df_filtrado
+        # Buscar columna de nombres
+        col_nombres = next((col for col in df.columns if any(opt.lower() in str(col).lower() for opt in posibles_nombres)), None)
+        # Buscar columna de puntajes
+        col_puntaje = next((col for col in df.columns if any(opt.lower() in str(col).lower() for opt in posibles_puntajes)), None)
+
+        if col_nombres and col_puntaje:
+            # Limpiar y convertir puntajes a numérico
+            df_filtrado = df[[col_nombres, col_puntaje]].dropna(subset=[col_puntaje])
+            df_filtrado[col_puntaje] = pd.to_numeric(df_filtrado[col_puntaje], errors='coerce')
+            df_filtrado = df_filtrado.dropna(subset=[col_puntaje])
+
+            # Ordenar de mayor a menor y tomar los N últimos (los más bajos)
+            df_ordenado = df_filtrado.sort_values(by=col_puntaje, ascending=False)
+            df_descendidos = df_ordenado.tail(top_n)
+
+            # Renombrar columnas para consistencia
+            df_descendidos = df_descendidos.rename(columns={col_nombres: "Alumno", col_puntaje: "Puntaje"})
+            df_descendidos["Curso"] = curso
+
+            descendidos_por_curso[curso] = df_descendidos[["Alumno", "Puntaje", "Curso"]]
+
     return descendidos_por_curso
 
 
@@ -32,10 +50,10 @@ def exportar_descendidos_con_nombres(descendidos_por_curso):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         for curso, df in descendidos_por_curso.items():
-            df[['Alumno', 'Puntaje']].to_excel(writer, sheet_name=str(curso), index=False)
+            df[["Alumno", "Puntaje"]].to_excel(writer, sheet_name=str(curso), index=False)
         if descendidos_por_curso:
             tabla_general = pd.concat(descendidos_por_curso.values(), ignore_index=True)
-            tabla_general[['Alumno', 'Puntaje', 'Curso']].to_excel(writer, sheet_name="Consolidado", index=False)
+            tabla_general[["Alumno", "Puntaje", "Curso"]].to_excel(writer, sheet_name="Consolidado", index=False)
     output.seek(0)
     return output.getvalue()
 
@@ -201,13 +219,13 @@ with tab4:
     # Mostrar tablas por curso
     for curso, df in descendidos_por_curso.items():
         st.subheader(f"{curso}: 15 puntajes más bajos")
-        st.table(df[['Alumno', 'Puntaje']])
+        st.table(df[["Alumno", "Puntaje"]])
 
     # Consolidado general
     if descendidos_por_curso:
         st.subheader("📊 Consolidado General de Descendidos")
         tabla_general = pd.concat(descendidos_por_curso.values(), ignore_index=True)
-        st.dataframe(tabla_general[['Alumno', 'Puntaje', 'Curso']])
+        st.dataframe(tabla_general[["Alumno", "Puntaje", "Curso"]])
 
     # Botón para descargar en Excel
     excel_data = exportar_descendidos_con_nombres(descendidos_por_curso)
